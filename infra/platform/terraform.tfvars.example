@@ -1,0 +1,6 @@
+project_id            = "url-shortner-prod-ab12"
+region                = "asia-south1"
+deploy_services       = false
+spanner_processing_units = 100
+redis_memory_size_gb  = 1
+allowed_origins       = ["*"]

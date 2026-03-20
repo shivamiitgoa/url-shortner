@@ -1,0 +1,20 @@
+# Cloud Build upload filter.
+# Keep service source trees intact (including apps/*/src/lib/**).
+
+.git
+.gitignore
+.github
+
+node_modules
+**/node_modules
+
+dist
+**/dist
+coverage
+**/coverage
+
+.terraform
+**/.terraform
+.terraform.lock.hcl
+
+.DS_Store

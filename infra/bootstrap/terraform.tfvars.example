@@ -1,0 +1,4 @@
+billing_account_id = "billingAccounts/01E441-CCA873-1B3D53"
+project_prefix     = "url-shortner-prod"
+region             = "asia-south1"
+budget_amount_usd  = 200

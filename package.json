@@ -1,0 +1,26 @@
+{
+  "name": "url-shortner",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run -ws build",
+    "test": "npm run -ws test",
+    "lint": "npm run -ws lint",
+    "typecheck": "npm run -ws typecheck",
+    "dev:api": "npm --workspace @url-shortner/api-service run dev",
+    "dev:redirect": "npm --workspace @url-shortner/redirect-service run dev",
+    "dev:worker": "npm --workspace @url-shortner/events-worker run dev",
+    "dev:web": "npm --workspace @url-shortner/web-dashboard run dev"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.32",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
