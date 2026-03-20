@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { config } from "../config";
 import { AuthenticatedRequest } from "../lib/auth";
-import { CollisionError, UrlRepository } from "../lib/spanner";
+import { CollisionError, UrlRecord, UrlRepository } from "../lib/spanner";
 import { generateBase62Code, isValidHttpUrl, normalizeAlias } from "../lib/utils";
 
 const createSchema = z.object({
@@ -17,6 +17,13 @@ const updateSchema = z.object({
   expiresAt: z.string().datetime().nullable().optional(),
   redirectType: z.union([z.literal(301), z.literal(302)]).optional()
 });
+
+function toUrlResponse(record: UrlRecord): UrlRecord & { shortUrl: string } {
+  return {
+    ...record,
+    shortUrl: `${config.publicBaseUrl}/${record.code}`
+  };
+}
 
 export function urlsRouter(repository: UrlRepository): Router {
   const router = Router();
@@ -57,10 +64,7 @@ export function urlsRouter(repository: UrlRepository): Router {
           redirectType: redirectType ?? 302
         });
 
-        res.status(201).json({
-          ...created,
-          shortUrl: `${config.publicBaseUrl}/${created.code}`
-        });
+        res.status(201).json(toUrlResponse(created));
         return;
       } catch (error) {
         if (error instanceof CollisionError) {
@@ -88,7 +92,7 @@ export function urlsRouter(repository: UrlRepository): Router {
 
     const limit = Number(req.query.limit ?? 100);
     const results = await repository.listByOwner(user.uid, Math.min(Math.max(limit, 1), 500));
-    res.status(200).json({ items: results });
+    res.status(200).json({ items: results.map(toUrlResponse) });
   });
 
   router.patch("/:code", async (req: AuthenticatedRequest, res) => {
@@ -112,7 +116,7 @@ export function urlsRouter(repository: UrlRepository): Router {
       return;
     }
 
-    res.status(200).json(updated);
+    res.status(200).json(toUrlResponse(updated));
   });
 
   router.delete("/:code", async (req: AuthenticatedRequest, res) => {

@@ -9,6 +9,8 @@ steps:
       - --build-arg
       - VITE_API_BASE_URL=${_API_BASE_URL}
       - --build-arg
+      - VITE_REDIRECT_BASE_URL=${_REDIRECT_BASE_URL}
+      - --build-arg
       - VITE_FIREBASE_API_KEY=${_FIREBASE_API_KEY}
       - --build-arg
       - VITE_FIREBASE_AUTH_DOMAIN=${_FIREBASE_AUTH_DOMAIN}

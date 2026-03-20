@@ -400,7 +400,7 @@ echo "Building web dashboard image with runtime endpoints..."
 gcloud builds submit \
   --project "$PROJECT_ID" \
   --config cloudbuild/web-image.yaml \
-  --substitutions="_WEB_IMAGE=${AR_HOST}/${PROJECT_ID}/${REPO}/web-dashboard:latest,_API_BASE_URL=${API_URL},_FIREBASE_API_KEY=${FIREBASE_API_KEY},_FIREBASE_AUTH_DOMAIN=${FIREBASE_AUTH_DOMAIN},_FIREBASE_PROJECT_ID=${PROJECT_ID},_FIREBASE_APP_ID=${FIREBASE_APP_ID}" \
+  --substitutions="_WEB_IMAGE=${AR_HOST}/${PROJECT_ID}/${REPO}/web-dashboard:latest,_API_BASE_URL=${API_URL},_REDIRECT_BASE_URL=${REDIRECT_URL},_FIREBASE_API_KEY=${FIREBASE_API_KEY},_FIREBASE_AUTH_DOMAIN=${FIREBASE_AUTH_DOMAIN},_FIREBASE_PROJECT_ID=${PROJECT_ID},_FIREBASE_APP_ID=${FIREBASE_APP_ID}" \
   .
 
 WEB_IMAGE="${AR_HOST}/${PROJECT_ID}/${REPO}/web-dashboard:latest"

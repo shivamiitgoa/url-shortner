@@ -9,6 +9,10 @@ function toDateInput(value: Date): string {
   return value.toISOString().slice(0, 10);
 }
 
+function normalizeBaseUrl(value: string | undefined): string {
+  return (value ?? "").trim().replace(/\/+$/, "");
+}
+
 export default function App(): JSX.Element {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string>("");
@@ -16,6 +20,7 @@ export default function App(): JSX.Element {
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
+  const [success, setSuccess] = useState<string>("");
 
   const [longUrl, setLongUrl] = useState("");
   const [customAlias, setCustomAlias] = useState("");
@@ -24,6 +29,12 @@ export default function App(): JSX.Element {
   const [analyticsCode, setAnalyticsCode] = useState("");
   const [analyticsFrom, setAnalyticsFrom] = useState(toDateInput(new Date(Date.now() - 30 * 86400000)));
   const [analyticsTo, setAnalyticsTo] = useState(toDateInput(new Date()));
+  const [guideCode, setGuideCode] = useState("");
+
+  const configuredRedirectBaseUrl = useMemo(
+    () => normalizeBaseUrl(import.meta.env.VITE_REDIRECT_BASE_URL),
+    []
+  );
 
   useEffect(() => {
     return onAuthStateChanged(auth, async (current) => {
@@ -55,6 +66,47 @@ export default function App(): JSX.Element {
     [items]
   );
 
+  const redirectBaseUrl = useMemo(() => {
+    if (configuredRedirectBaseUrl) {
+      return configuredRedirectBaseUrl;
+    }
+
+    const firstShortUrl = items.find((item) => item.shortUrl)?.shortUrl;
+    if (!firstShortUrl) {
+      return "";
+    }
+
+    try {
+      return normalizeBaseUrl(new URL(firstShortUrl).origin);
+    } catch {
+      return "";
+    }
+  }, [configuredRedirectBaseUrl, items]);
+
+  function getShortUrl(item: UrlItem): string | null {
+    if (item.shortUrl) {
+      return item.shortUrl;
+    }
+    if (redirectBaseUrl) {
+      return `${redirectBaseUrl}/${item.code}`;
+    }
+    return null;
+  }
+
+  function openShortUrl(shortUrl: string): void {
+    window.open(shortUrl, "_blank", "noopener,noreferrer");
+  }
+
+  async function copyShortUrl(shortUrl: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(shortUrl);
+      setSuccess("Short URL copied to clipboard.");
+      setError("");
+    } catch (err) {
+      setError(`Copy failed: ${String(err)}`);
+    }
+  }
+
   async function handleCreate(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     if (!token) {
@@ -62,6 +114,7 @@ export default function App(): JSX.Element {
     }
 
     setError("");
+    setSuccess("");
     try {
       const created = await createUrl(token, {
         longUrl,
@@ -73,6 +126,10 @@ export default function App(): JSX.Element {
       setLongUrl("");
       setCustomAlias("");
       setExpiresAt("");
+      setGuideCode(created.code);
+      const shortUrl = getShortUrl(created);
+      setSuccess(shortUrl ? `Short URL created: ${shortUrl}` : `Short code created: ${created.code}`);
+      setError("");
     } catch (err) {
       setError(String(err));
     }
@@ -87,6 +144,8 @@ export default function App(): JSX.Element {
     try {
       const updated = await updateUrl(token, item.code, { status: nextStatus });
       setItems((prev) => prev.map((candidate) => (candidate.code === updated.code ? updated : candidate)));
+      setSuccess(`Updated ${updated.code} to ${updated.status}.`);
+      setError("");
     } catch (err) {
       setError(String(err));
     }
@@ -100,6 +159,8 @@ export default function App(): JSX.Element {
     try {
       await deleteUrl(token, code);
       setItems((prev) => prev.filter((item) => item.code !== code));
+      setSuccess(`Deleted ${code}.`);
+      setError("");
     } catch (err) {
       setError(String(err));
     }
@@ -114,10 +175,16 @@ export default function App(): JSX.Element {
     try {
       const result = await fetchAnalytics(token, analyticsCode, analyticsFrom, analyticsTo);
       setAnalytics(result);
+      setSuccess(`Fetched analytics for ${analyticsCode}.`);
+      setError("");
     } catch (err) {
       setError(String(err));
     }
   }
+
+  const exampleRedirectUrl = redirectBaseUrl
+    ? `${redirectBaseUrl}/${guideCode || sortedItems[0]?.code || "yourCode"}`
+    : "";
 
   return (
     <div className="page">
@@ -134,6 +201,38 @@ export default function App(): JSX.Element {
       </header>
 
       {error ? <p className="error">{error}</p> : null}
+      {success ? <p className="success">{success}</p> : null}
+
+      <section className="card guide-card">
+        <h2>How To Use This Dashboard</h2>
+        <div className="guide-grid">
+          <article>
+            <h3>1. Create</h3>
+            <p>Paste your long URL and click Create. Optional: add a custom alias and expiry date.</p>
+          </article>
+          <article>
+            <h3>2. Open Short URL</h3>
+            <p>Use the full short URL shown in the table (Copy/Open buttons are next to each link).</p>
+          </article>
+          <article>
+            <h3>3. Track & Manage</h3>
+            <p>Use Analytics for click counts and Disable/Delete to control link availability.</p>
+          </article>
+        </div>
+        <p className="guide-note">
+          Important: short links are served by the redirect service domain, not by the dashboard domain.
+        </p>
+        {exampleRedirectUrl ? (
+          <p className="guide-example">
+            Example redirect URL:{" "}
+            <a href={exampleRedirectUrl} target="_blank" rel="noreferrer">
+              {exampleRedirectUrl}
+            </a>
+          </p>
+        ) : (
+          <p className="guide-example">The redirect base URL will appear after your first link is loaded.</p>
+        )}
+      </section>
 
       {user ? (
         <>
@@ -161,37 +260,72 @@ export default function App(): JSX.Element {
           <section className="card">
             <h2>Your URLs</h2>
             {loading ? <p>Loading...</p> : null}
-            <table>
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Destination</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedItems.map((item) => (
-                  <tr key={item.code}>
-                    <td>{item.code}</td>
-                    <td>
-                      <a href={item.longUrl} target="_blank" rel="noreferrer">
-                        {item.longUrl}
-                      </a>
-                    </td>
-                    <td>{item.status}</td>
-                    <td>{new Date(item.createdAt).toLocaleString()}</td>
-                    <td>
-                      <button onClick={() => handleToggle(item)}>
-                        {item.status === "ACTIVE" ? "Disable" : "Enable"}
-                      </button>
-                      <button onClick={() => handleDelete(item.code)}>Delete</button>
-                    </td>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>Short URL</th>
+                    <th>Destination</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {sortedItems.length > 0 ? (
+                    sortedItems.map((item) => {
+                      const shortUrl = getShortUrl(item);
+                      return (
+                        <tr key={item.code}>
+                          <td className="code-cell">{item.code}</td>
+                          <td className="short-url-cell">
+                            {shortUrl ? (
+                              <>
+                                <a href={shortUrl} target="_blank" rel="noreferrer">
+                                  {shortUrl}
+                                </a>
+                                <div className="row-actions">
+                                  <button type="button" className="secondary" onClick={() => openShortUrl(shortUrl)}>
+                                    Open
+                                  </button>
+                                  <button type="button" className="secondary" onClick={() => copyShortUrl(shortUrl)}>
+                                    Copy
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <span className="muted">Unavailable until redirect base URL is configured.</span>
+                            )}
+                          </td>
+                          <td className="destination-cell">
+                            <a href={item.longUrl} target="_blank" rel="noreferrer">
+                              {item.longUrl}
+                            </a>
+                          </td>
+                          <td>{item.status}</td>
+                          <td>{new Date(item.createdAt).toLocaleString()}</td>
+                          <td>
+                            <button type="button" onClick={() => handleToggle(item)}>
+                              {item.status === "ACTIVE" ? "Disable" : "Enable"}
+                            </button>
+                            <button type="button" onClick={() => handleDelete(item.code)}>
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="empty-row">
+                        No links yet. Create your first short URL above.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </section>
 
           <section className="card">
@@ -210,22 +344,24 @@ export default function App(): JSX.Element {
             </form>
 
             {analytics ? (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Clicks</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {analytics.items.map((point) => (
-                    <tr key={point.date}>
-                      <td>{point.date}</td>
-                      <td>{point.clicks}</td>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Clicks</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {analytics.items.map((point) => (
+                      <tr key={point.date}>
+                        <td>{point.date}</td>
+                        <td>{point.clicks}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : null}
           </section>
         </>
