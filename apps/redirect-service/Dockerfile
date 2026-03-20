@@ -1,4 +1,4 @@
-FROM node:20-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 
 COPY package*.json tsconfig.base.json ./
@@ -8,7 +8,7 @@ RUN npm install
 COPY apps/redirect-service apps/redirect-service
 RUN npm run --workspace @url-shortner/redirect-service build
 
-FROM node:20-alpine
+FROM node:24-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 

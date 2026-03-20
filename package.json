@@ -7,10 +7,10 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run -ws build",
-    "test": "npm run -ws test",
-    "lint": "npm run -ws lint",
-    "typecheck": "npm run -ws typecheck",
+    "build": "npm run --workspaces build",
+    "test": "npm run --workspaces test",
+    "lint": "npm run --workspaces lint",
+    "typecheck": "npm run --workspaces typecheck",
     "dev:api": "npm --workspace @url-shortner/api-service run dev",
     "dev:redirect": "npm --workspace @url-shortner/redirect-service run dev",
     "dev:worker": "npm --workspace @url-shortner/events-worker run dev",
@@ -21,6 +21,6 @@
     "typescript": "^5.8.3"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   }
 }

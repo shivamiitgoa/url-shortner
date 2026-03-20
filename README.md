@@ -16,7 +16,7 @@ Scalable URL shortener system for GCP with:
 
 ## Quick Start
 
-1. Install Node 20 and dependencies:
+1. Install Node 24 (LTS) and dependencies:
    - `npm install`
 2. Copy env templates and run locally.
 3. Provision GCP with Terraform stacks.
